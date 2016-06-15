@@ -8,6 +8,8 @@ import sys
 import time
 from naoqi import ALProxy
 import vision_definitions
+import cv2
+import numpy as np
 
 def main(robotIP, PORT=9559):
     # Create a proxy to ALPhotoCapture
@@ -23,22 +25,35 @@ def main(robotIP, PORT=9559):
     subscriberID = 'subscriberID'
     fps = 5
     # The subscriberID can be altered if other instances are already running
-    camID = videoDeviceProxy.subscribe(subscriberID, vision_definitions.kVGA, vision_definitions.kRGBColorSpace, fps);
+    camID = videoDeviceProxy.subscribe(subscriberID, vision_definitions.kVGA, vision_definitions.kBGRColorSpace, fps);
 
     image = videoDeviceProxy.getImageRemote(camID)
 
-    # print image
-    image_file = open('image.yuv', 'w')
-    image_file.write(bytes(image))
-    
+    width = 640
+    height = 480
+    image_cv = np.zeros((height, width, 3), np.uint8)
+
+    # translate value to mat
+    values = map(ord, list(image[6]))
+    i = 0
+    for y in range(0, height):
+        for x in range(0, width):
+            image_cv.itemset((y, x, 0), values[i + 0])
+            image_cv.itemset((y, x, 1), values[i + 1])
+            image_cv.itemset((y, x, 2), values[i + 2])
+            i += 3
+
+    # show image
+    cv2.imshow("nao image", image_cv)
+
+    gray = cv2.cvtColor(image_cv, cv2.COLOR_BGR2GRAY)
+
+    cv2.imshow("nao image gray", gray)
+
+    cv2.waitKey()
+
     # Unsubscribe the V.M.
     videoDeviceProxy.unsubscribe(camID);
-
-    '''
-    videoDeviceProxy.setResolution(2)
-    videoDeviceProxy.setPictureFormat("jpg")
-    videoDeviceProxy.takePicture("/home/idhuser/", "image")
-    '''
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
